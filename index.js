@@ -4,6 +4,8 @@ const url = require('url');
 
 const app = express();
 
+const envDebug = process.env.DEBUG; // true, debug log
+
 // 处理所有的 OPTIONS 请求
 app.use((req, res, next) => {
     if (req.method === 'OPTIONS') {
@@ -27,7 +29,7 @@ app.use('/', (req, res, next) => {
 
     // 设置代理目标
     const proxy = createProxyMiddleware({
-        logger: console,
+        logger: envDebug == "true" ? console : null,
         target: `${parsedUrl.protocol}//${parsedUrl.host}`,
         secure: false,
         changeOrigin: true,
