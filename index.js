@@ -17,40 +17,39 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use('/', (req, res, next) => {
-    const targetUrl = req.url.replace('/proxy/', '');
-    if (!targetUrl) {
-        return res.status(400).send('Missing uri parameter');
-    }
-    const parsedUrl = url.parse(targetUrl);
-    if (!parsedUrl.protocol || !parsedUrl.host) {
-        return res.status(400).send('Invalid URL');
-    }
-
-    // 设置代理目标
-    const proxy = createProxyMiddleware({
-        logger: envDebug == "true" ? console : null,
-        target: `${parsedUrl.protocol}//${parsedUrl.host}`,
-        secure: false,
-        changeOrigin: true,
-        pathRewrite: (path, req) => {
-            return parsedUrl.path;
-        },
-        on: {
-            proxyReq: (proxyReq, req, res) => {
-                proxyReq.setHeader('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36');
-            }, 
-            proxyRes: (proxyRes, req, res) => {
-                // 设置CORS头
-                proxyRes.headers['Access-Control-Allow-Origin'] = '*';
-                proxyRes.headers['Access-Control-Allow-Methods'] = '*';
-                proxyRes.headers['Access-Control-Allow-Headers'] = '*';
-            }
-        },
-    });
-
-    return proxy(req, res, next);
+const proxyMw = createProxyMiddleware({
+    logger: envDebug == "true" ? console : null,
+    secure: false,
+    changeOrigin: true,
+    router: function(req)  {
+        const targetUrl = req.url.replace('/proxy/', '');
+        
+        if (!targetUrl) {
+            return null;
+        }
+        const parsedUrl = url.parse(targetUrl);
+        if (!parsedUrl.protocol || !parsedUrl.host) {
+            return null;
+        }
+        return targetUrl;
+    },
+    pathRewrite: function (path, req) {
+        return "" 
+    },
+    on: {
+        proxyReq: (proxyReq, req, res) => {
+            proxyReq.setHeader('User-Agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36');
+        }, 
+        proxyRes: (proxyRes, req, res) => {
+            // 设置CORS头
+            proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+            proxyRes.headers['Access-Control-Allow-Methods'] = '*';
+            proxyRes.headers['Access-Control-Allow-Headers'] = '*';
+        }
+    },
 });
+
+app.use('/', proxyMw);
 
 app.listen(3000, () => {
     console.log('Server is running on port 3000');
